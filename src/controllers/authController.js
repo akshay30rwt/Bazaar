@@ -210,4 +210,85 @@ const resetPassword = async (req, res, next) => {
     }
 };
 
-module.exports = { register, verifyEmail, login, forgotPassword, resetPassword };
+const uploadAvatar = async (req, res, next) => {
+    try {
+        if(!req.file) {
+            throw new AppError('Please upload an image', 400);
+        }
+
+        const cloudinary = require('../config/cloudinary');
+
+        const user = await User.findById(req.userId);
+        if(!user) {
+            throw new AppError('User not found', 404);
+        }
+
+        if(user.avatar.publicId) {
+            try {
+                await cloudinary.uploader.destroy(user.avatar.publicId);
+            }
+            catch(cloudinaryError) {
+                logger.error(`Failed to delete old avatar for user ${user._id}: ${cloudinaryError.message}`);
+            }
+        }
+
+        const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                { folder: 'bazaar/avatars', transformation: [{ width: 300, height: 300, crop: 'fill'}] },
+                (error, result) => {
+                    if(error) reject(error);
+                    else resolve(result);
+                }
+            );
+            uploadStream.end(req.file.buffer);
+        });
+
+        user.avatar.url = result.secure_url;
+        user.avatar.publicId = result.public_id;
+        await user.save();
+
+        res.status(200).json({
+            message: 'Avatar uploaded successfully',
+            avatar: user.avatar
+        });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+const getProfile = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.userId);
+
+        if(!user) {
+            throw new AppError('User not found', 404);
+        }
+
+        res.status(200).json(user);
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+const logout = async (req, res, next) => {
+    try {
+        await User.findByIdAndUpdate(req.userId, { isOnline: false });
+        res.status(200).json({ message: 'Logged out successfully' });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+module.exports = {
+    register, 
+    verifyEmail, 
+    login, 
+    forgotPassword, 
+    resetPassword, 
+    uploadAvatar, 
+    getProfile, 
+    logout
+};
