@@ -132,4 +132,82 @@ const login = async (req, res, next) => {
     }
 };
 
-module.exports = { register, verifyEmail, login };
+const forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+
+        const user = await User.findOne({ email });
+        if(!user) {
+            return res.status(200).json({
+                message: 'If an account with that email exists, a reset link has been sent.'
+            });
+        }
+
+        const plainResetToken = generateToken();
+        const hashedResetToken = hashToken(plainResetToken);
+
+        user.resetPasswordToken = hashedResetToken;
+        user.resetPasswordExpiry = Date.now() + 60 * 60 * 1000;
+        await user.save();
+
+        const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/forgot-email/${plainResetToken}`;
+
+        try {
+            await sendEmail({
+                to: email,
+                subject: 'Password Reset Request - Bazaar',
+                html: `
+                    <h2>Password Reset</h2>
+                    <p>You requested a password reset. Click below:</p>
+                    <a href="${resetUrl}">Reset Password</a>
+                    <p>This link expires in 1 hour. If you didn't request this, ignore this email.</p>
+                `
+            });
+        }
+        catch(emailError) {
+            logger.error(`Password reset email failed for ${email}`);
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpiry = undefined;
+            await user.save();
+            throw new AppError('Could not send reset email, please try again later', 500);
+        }
+
+        res.status(200).json({
+            message: 'If an account with that email exists, a reset link has been sent.'
+        });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+const resetPassword = async (req, res, next) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.body;
+
+        const hashedToken = hashToken(token);
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpiry: { $gt: Date.now() }
+        });
+
+        if(!user) {
+            throw new AppError('Reset link is invalid or has expired', 400);
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpiry = undefined;
+        await user.save();
+
+        res.status(200).json({ message: 'Password reset successful. You can now login.' });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+module.exports = { register, verifyEmail, login, forgotPassword, resetPassword };
