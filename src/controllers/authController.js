@@ -59,4 +59,34 @@ const register = async (req, res, next) => {
     }
 };
 
-module.exports = { register };
+const verifyEmail = async (req, res, next) => {
+    try {
+        const { token } = req.params;
+        const hashedToken = hashToken(token);
+
+        const user = await User.findOne({
+            verificationToken: hashedToken,
+            verificationTokenExpiry: { $gt: Date.now() }
+        }).select('+verificationToken +verificationTokenExpiry');
+
+        if(!user) {
+            throw new AppError('Verification link is invalid or has expired', 400);
+        }
+
+        if(user.isVerified) {
+            return res.status(200).json({ message: 'Email already verified. You can login' });
+        }
+
+        user.isVerified = true;
+        user.verificationToken = undefined;
+        user.verificationTokenExpiry = undefined;
+        await user.save();
+
+        res.status(200).json({ message: 'Email verified successfully. You can now login'})
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+module.exports = { register, verifyEmail };
