@@ -89,4 +89,47 @@ const verifyEmail = async (req, res, next) => {
     }
 };
 
-module.exports = { register, verifyEmail };
+const login = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email }).select('+password');
+        if(!user) {
+            throw new AppError('Invalid email or password', 401);
+        }
+
+        if(!user.isVerified) {
+            throw new AppError('Please verify your email before logging in', 403);
+        }
+
+        const isMatch = await bcrypt.compare(password, hashedPassword);
+        if(!isMatch) {
+            throw new AppError('Invalid email or password', 401);
+        }
+
+        const token = jwt.sign(
+            { userId = user._id }, 
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        user.isOnline = true; 
+        await user.save();
+
+        res.status(200).json({
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                avatar: user.avatar
+            }
+        });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+module.exports = { register, verifyEmail, login };
