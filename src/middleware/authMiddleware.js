@@ -21,7 +21,7 @@ const protect = async (req, res, next) => {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
         }
         catch(error) {
-            if(error.name = 'TokenExpiredError') {
+            if(error.name === 'TokenExpiredError') {
                 throw new AppError('Session expired, please login again', 401)
             }
             throw new AppError('Invalid token', 401);
@@ -33,8 +33,8 @@ const protect = async (req, res, next) => {
             throw new AppError('User belonging to this token no longer exists.', 401);
         }
 
-        req.userId = user.userId;
-        req.userRole = user.userRole;
+        req.userId = user._id;
+        req.userRole = user.role;
         next();
     }
     catch(error) {
