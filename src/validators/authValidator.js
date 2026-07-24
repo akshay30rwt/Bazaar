@@ -18,8 +18,7 @@ const registerSchema = Joi.object({
             'string.min': 'Password must be at least 6 characters',
             'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
             'any.required': 'Password is required'
-        }),
-    role: Joi.string().valid('customer', 'vendor').default('customer')
+        })
 });
 
 const loginSchema = Joi.object({

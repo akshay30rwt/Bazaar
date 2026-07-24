@@ -8,7 +8,7 @@ const logger = require('../utils/logger');
 
 const register = async (req, res, next) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password } = req.body;
 
         const existingUser = await User.findOne({ email });
         if(existingUser) {
@@ -25,7 +25,6 @@ const register = async (req, res, next) => {
             name,
             email,
             password: hashedPassword,
-            role: role || 'customer',
             verificationToken: hashedVerificationToken,
             verificationTokenExpiry: Date.now() + 24 * 60 * 60 * 1000
         });
