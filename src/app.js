@@ -39,7 +39,7 @@ app.get('/health', (req, res) => {
 
 app.use('/auth', authRoutes);
 
-app.all('*', (req, res, next) => {
+app.use((req, res, next) => {
     next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
 
