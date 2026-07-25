@@ -84,4 +84,104 @@ const createProduct = async (req, res, next) => {
     }
 };
 
-module.exports = { createProduct };
+const getAllProducts = async (req, res, next) => {
+    try {
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const skip = (page - 1) * limit;
+
+        const filter = { isActive: true };
+
+        if(req.query.category) {
+            filter.category = req.query.category;
+        }
+
+        if(req.query.minPrice || req.query.maxPrice) {
+            filter.price = {};
+            if(req.query.minPrice) filter.price.$gte = Number(req.query.minPrice);
+            if(req.query.maxPrice) filter.price.$lte = Number(req.query.maxPrice);
+        }
+
+        const [products, total] = new Promise.all([
+            Vendor.find(filter)
+                .populate('vendor', 'storeName rating isActive')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Vendor.countDocuments(filter)
+        ]);
+
+        res.status(200).json({
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            data: products
+        });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+const searchProducts = async (req, res, next) => {
+    try {
+        const { q } = req.query;
+
+        if(!q || q.trim().length === 0) {
+            throw new AppError('Search query cannot be empty', 400);
+        }
+
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const skip = (page - 1) * limit;
+
+        const filter = {
+            isActive: true,
+            $text: { $search: q }
+        };
+
+        const [products, total] = await Promise.all([
+            Product.find(filter, { score: { $meta: 'textScore' } })
+                .populate('vendor', 'storeName rating')
+                .sort({ score: { $meta: 'textScore' } })
+                .skip(skip)
+                .limit(limit),
+            Product.countDocuments(filter)
+        ]);
+
+        res.status(200).json({
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            data: products
+        });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+const getProductById = async (req, res, next) => {
+    try {
+        const product = await Product.findById(req.params.id).populate('vendor', 'storeName rating isActive');
+
+        if(!product) {
+            throw new AppError('Product not found', 404);
+        }
+
+        if(!product.isActive || !product.vendor.isActive) {
+            throw new AppError('Product not found', 404);
+        }
+
+        res.status(200).json(product);
+
+    } 
+    catch(error) {
+        if(error.name === 'CastError') {
+            return next(new AppError('Invalid product ID format', 400));
+        }
+        next(error);
+    }
+};
+
+module.exports = { createProduct, getAllProducts, searchProducts, getProductById };
