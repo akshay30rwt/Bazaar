@@ -5,10 +5,14 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
-
 const swaggerSpec = require('./config/swagger');
+
 const authRoutes = require('./routes/authRoutes');
+
 const vendorRoutes = require('./routes/vendorRoutes');
+
+const productRoutes = require('./routes/productRoutes');
+
 const errorHandler = require('./middleware/errorHandler');
 const AppError = require('./utils/AppError');
 
@@ -40,6 +44,7 @@ app.get('/health', (req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/vendors', vendorRoutes);
+app.use('/products', productRoutes);
 
 app.use((req, res, next) => {
     next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
