@@ -184,4 +184,89 @@ const getProductById = async (req, res, next) => {
     }
 };
 
-module.exports = { createProduct, getAllProducts, searchProducts, getProductById };
+const updateProduct = async (req, res, next) => {
+    try {
+        const vendor = await Vendor.findOne({ user: req.userId });
+
+        if(!vendor) {
+            throw new AppError('Vendor profile not found', 404);
+        }
+
+        const product = await Product.findById(req.params.id);
+
+        if(!product) {
+            throw new AppError('Product not found', 404);
+        }
+
+        if(product.vendor.toString() !== vendor._id.toString()) {
+            throw new AppError('You do not have permission to modify this product', 403);
+        }
+
+        const { name, description, price, category, stock, isActive } = req.body;
+
+        if(name !== undefined) product.name = name;
+        if(description !== undefined) product.description = description;
+        if(price !== undefined) product.price = price;
+        if(category !== undefined) product.category = category;
+        if(stock !== undefined) product.stock = stock;
+        if(isActive !== undefined) product.isActive = isActive;
+
+        await product.save();
+
+        res.status(200).json({
+            message: 'Product updated successfully',
+            product
+        });
+
+    } 
+    catch(error) {
+        if(error.name === 'CastError') {
+            return next(new AppError('Invalid product ID format', 400));
+        }
+        next(error);
+    }
+};
+
+const deleteProduct = async (req, res, next) => {
+    try {
+        const vendor = await Vendor.findOne({ user: req.userId });
+
+        if(!vendor) {
+            throw new AppError('Vendor profile not found', 404);
+        }
+
+        const product = await Product.findById(req.params.id);
+
+        if(!product) {
+            throw new AppError('Product not found', 404);
+        }
+
+        if(product.vendor.toString() !== vendor._id.toString()) {
+            throw new AppError('You do not have permission to delete this product', 403);
+        }
+
+        const deletedImages = [...product.images];
+
+        await Product.findByIdAndDelete(req.params.id);
+
+        for(const img of deletedImages) {
+            try {
+                await cloudinary.uploader.destroy(img.publicId);
+            } 
+            catch(cleanupError) {
+                logger.error(`Failed to delete image ${img.publicId} for deleted product ${req.params.id}: ${cleanupError.message}`);
+            }
+        }
+
+        res.status(200).json({ message: 'Product deleted successfully' });
+
+    } 
+    catch(error) {
+        if(error.name === 'CastError') {
+            return next(new AppError('Invalid product ID format', 400));
+        }
+        next(error);
+    }
+};
+
+module.exports = { createProduct, getAllProducts, searchProducts, getProductById, updateProduct, deleteProduct };
