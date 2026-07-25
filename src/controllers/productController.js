@@ -5,8 +5,11 @@ const cloudinary = require('../config/cloudinary');
 const logger = require('../utils/logger');
 
 const createProduct = async (req, res, next) => {
+    let uploadedImages = [];
+
     try {
         const vendor = await Vendor.findOne({ user: req.userId});
+
         if(!vendor) {
             throw new AppError('You must have a vendor storefront to create product', 403);
         }
@@ -21,34 +24,19 @@ const createProduct = async (req, res, next) => {
 
         const { name, description, price, category, stock } = req.body;
 
-        const uploadedImages = [];
+        for(const file of req.files) {
+            const result = await new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    { folder: 'bazaar/products', transformation: [{ width: 800, height: 800, crop: 'limit'}] },
+                    (error, result) => {
+                        if(error) reject(error);
+                        else resolve(result);
+                    }
+                );
+                uploadStream.end(file.buffer);
+            });
 
-        try {
-            for(const file of req.files) {
-                const result = await new Promise((resolve, reject) => {
-                    const uploadStream = cloudinary.uploader.upload_stream(
-                        { folder: 'bazaar/products', transformation: [{ width: 800, height: 800, crop: 'limit'}] },
-                        (error, result) => {
-                            if(error) reject(error);
-                            else resolve(result);
-                        }
-                    );
-                    uploadStream.end(file.buffer);
-                });
-
-                uploadedImages.push({ url: result.secure_url, publicId: result.public_id });
-            }
-        }
-        catch(uploadError) {
-            for(const img of uploadedImages) {
-                try {
-                    await cloudinary.uploader.destroy(img.publicId);
-                }
-                catch(cleanupError) {
-                    logger.error(`Failed to cleanup orphaned image ${img.publicId}: ${cleanupError.message}`);
-                }
-            }
-            throw new AppError('Failed to upload product images. Please try again', 500)
+            uploadedImages.push({ url: result.secure_url, publicId: result.public_id });
         }
 
         const product = new Product({
@@ -60,6 +48,7 @@ const createProduct = async (req, res, next) => {
             stock,
             images: uploadedImages
         });
+
         await product.save();
 
         res.status(201).json({
@@ -68,6 +57,16 @@ const createProduct = async (req, res, next) => {
         });
     }
     catch(error) {
+        if(uploadedImages.length > 0) {
+            for(const img of uploadedImages) {
+                try {
+                    await cloudinary.uploader.destroy(img.publicId);
+                }
+                catch(cleanupError) {
+                    logger.error(`Failed to cleanup orphaned image ${img.publicId}: ${cleanupError.message}`);
+                }
+            }
+        }
         next(error);
     }
 };
