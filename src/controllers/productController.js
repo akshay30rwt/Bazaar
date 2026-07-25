@@ -102,7 +102,7 @@ const getAllProducts = async (req, res, next) => {
             if(req.query.maxPrice) filter.price.$lte = Number(req.query.maxPrice);
         }
 
-        const [products, total] = new Promise.all([
+        const [products, total] = await Promise.all([
             Vendor.find(filter)
                 .populate('vendor', 'storeName rating isActive')
                 .sort({ createdAt: -1 })
