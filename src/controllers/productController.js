@@ -103,12 +103,12 @@ const getAllProducts = async (req, res, next) => {
         }
 
         const [products, total] = await Promise.all([
-            Vendor.find(filter)
+            Product.find(filter)
                 .populate('vendor', 'storeName rating isActive')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
-            Vendor.countDocuments(filter)
+            Product.countDocuments(filter)
         ]);
 
         res.status(200).json({
