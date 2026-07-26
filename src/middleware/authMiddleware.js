@@ -35,6 +35,7 @@ const protect = async (req, res, next) => {
 
         req.userId = user._id;
         req.userRole = user.role;
+        req.userEmail = user.email;
         next();
     }
     catch(error) {
