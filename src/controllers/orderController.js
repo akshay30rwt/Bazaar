@@ -95,4 +95,114 @@ const createOrder = async (req, res, next) => {
     }
 };
 
-module.exports = { createOrder };
+const getCustomerOrders = async (req, res, next) => {
+    try {
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const skip = (page - 1) * limit;
+
+        const filter = { customer: req.userId };
+
+        const [orders, total] = await Promise.all([
+            Order.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Order.countDocuments(filter)
+        ]);
+
+        res.status(200).json({
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            data: orders
+        });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+const getVendorOrders = async (req, res, next) => {
+    try {
+        const Vendor = require('../models/Vendor');
+        const vendor = await Vendor.findOne({ user: req.userId });
+
+        if(!vendor) {
+            throw new AppError('Vendor profile not found', 404);
+        }
+
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const skip = (page - 1) * limit;
+
+        const filter = { 'items.vendor': vendor._id };
+
+        const [orders, total] = await Promise.all([
+            Order.find(filter)
+                .populate('customer', 'name email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Order.countDocuments(filter)
+        ]);
+
+        const scopedOrders = orders.map(order => {
+            const orderObj = order.toObject();
+            orderObj.items = orderObj.items.filter(
+                item => item.vendor.toString() === vendor._id.toString()
+            );
+            return orderObj;
+        });
+
+        res.status(200).json({
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            data: scopedOrders
+        });
+    }
+    catch(error) {
+        next(error);
+    }
+};
+
+const getOrderById = async (req, res, next) => {
+    try {
+        const order = await Order.findById(req.params.id).populate('customer', 'name email');
+
+        if(!order) {
+            throw new AppError('Order not found', 404);
+        }
+
+        const isOwner = order.customer._id.toString() === req.userId.toString();
+
+        const Vendor = require('../models/Vendor');
+        const vendor = await Vendor.findOne({ user: req.userId });
+        const isVendorOnOrder = vendor && order.items.some(
+            item => item.vendor.toString() === vendor._id.toString()
+        );
+
+        if(!isOwner && !isVendorOnOrder && req.userRole !== 'admin') {
+            throw new AppError('You do not have permission to view this order', 403);
+        }
+
+        const orderObj = order.toObject();
+
+        if(isVendorOnOrder && !isOwner && req.userRole !== 'admin') {
+            orderObj.items = orderObj.items.filter(
+                item => item.vendor.toString() === vendor._id.toString()
+            );
+        }
+
+        res.status(200).json(orderObj);
+    } 
+    catch(error) {
+        if (error.name === 'CastError') {
+            return next(new AppError('Invalid order ID format', 400));
+        }
+        next(error);
+    }
+};
+
+module.exports = { createOrder, getCustomerOrders, getVendorOrders, getOrderById };
