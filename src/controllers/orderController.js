@@ -204,6 +204,14 @@ const getOrderById = async (req, res, next) => {
     }
 };
 
+const VALID_TRANSITIONS = {
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['shipped', 'cancelled'],
+    shipped: ['delivered'],
+    delivered: [],
+    cancelled: []
+};
+
 const updateOrderStatus = async (req, res, next) => {
     const session = await mongoose.startSession();
 
