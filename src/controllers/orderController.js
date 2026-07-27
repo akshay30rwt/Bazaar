@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Vendor = require('../models/Vendor');
 const AppError = require('../utils/AppError');
 const sendEmail = require('../utils/sendEmail');
 const logger = require('../utils/logger');
@@ -125,7 +126,6 @@ const getCustomerOrders = async (req, res, next) => {
 
 const getVendorOrders = async (req, res, next) => {
     try {
-        const Vendor = require('../models/Vendor');
         const vendor = await Vendor.findOne({ user: req.userId });
 
         if(!vendor) {
@@ -177,7 +177,6 @@ const getOrderById = async (req, res, next) => {
 
         const isOwner = order.customer._id.toString() === req.userId.toString();
 
-        const Vendor = require('../models/Vendor');
         const vendor = await Vendor.findOne({ user: req.userId });
         const isVendorOnOrder = vendor && order.items.some(
             item => item.vendor.toString() === vendor._id.toString()
@@ -205,4 +204,78 @@ const getOrderById = async (req, res, next) => {
     }
 };
 
-module.exports = { createOrder, getCustomerOrders, getVendorOrders, getOrderById };
+const updateOrderStatus = async (req, res, next) => {
+    const session = await mongoose.startSession();
+
+    try {
+        const vendor = await Vendor.findOne({ user: req.userId });
+
+        if(!vendor) {
+            throw new AppError('Vendor profile not found', 404);
+        }
+
+        const order = await Order.findById(req.params.id);
+
+        if(!order) {
+            throw new AppError('Order not found', 404);
+        }
+
+        const isVendorOnOrder = order.items.some(
+            item => item.vendor.toString() === vendor._id.toString()
+        );
+
+        if(!isVendorOnOrder) {
+            throw new AppError('You do not have permission to update this order', 403);
+        }
+
+        const { status: newStatus } = req.body;
+        const currentStatus = order.status;
+
+        const allowedNextStatuses = VALID_TRANSITIONS[currentStatus];
+
+        if(!allowedNextStatuses.includes(newStatus)) {
+            throw new AppError(
+                `Cannot change order status from "${currentStatus}" to "${newStatus}". Allowed transitions: ${allowedNextStatuses.length > 0 ? allowedNextStatuses.join(', ') : 'none (final status)'}`,
+                400
+            );
+        }
+
+        if(newStatus === 'cancelled') {
+            session.startTransaction();
+
+            for(const item of order.items) {
+                await Product.findByIdAndUpdate(
+                    item.product,
+                    { $inc: { stock: item.quantity } },
+                    { session }
+                );
+            }
+
+            order.status = newStatus;
+            await order.save({ session });
+
+            await session.commitTransaction();
+        } else {
+            order.status = newStatus;
+            await order.save();
+        }
+
+        res.status(200).json({
+            message: `Order status updated to "${newStatus}"`,
+            order
+        });
+    } 
+    catch(error) {
+        if(session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        if(error.name === 'CastError') {
+            return next(new AppError('Invalid order ID format', 400));
+        }
+        next(error);
+    } finally {
+        session.endSession();
+    }
+};
+
+module.exports = { createOrder, getCustomerOrders, getVendorOrders, getOrderById, updateOrderStatus };
