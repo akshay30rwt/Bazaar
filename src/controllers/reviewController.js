@@ -77,4 +77,44 @@ const createReview = async (req, res, next) => {
     }
 };
 
-module.exports = { createReview };
+const getProductReviews = async (req, res, next) => {
+    try {
+        const { productId } = req.params;
+
+        const product = await Product.findById(productId);
+        if(!product) {
+            throw new AppError('Product not found', 404);
+        }
+
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const skip = (page - 1) * limit;
+
+        const filter = { product: productId };
+
+        const [reviews, total] = await Promise.all([
+            Review.find(filter)
+                .populate('customer', 'name avatar')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Review.countDocuments(filter)
+        ]);
+
+        res.status(200).json({
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            data: reviews
+        });
+
+    } 
+    catch(error) {
+        if(error.name === 'CastError') {
+            return next(new AppError('Invalid product ID format', 400));
+        }
+        next(error);
+    }
+};
+
+module.exports = { createReview, getProductReviews };
