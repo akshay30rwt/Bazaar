@@ -17,6 +17,8 @@ const orderRoutes = require('./routes/orderRoutes');
 
 const reviewRoutes = require('./routes/reviewRoutes');
 
+const messageRoutes = require('./routes/messageRoutes');
+
 const errorHandler = require('./middleware/errorHandler');
 const AppError = require('./utils/AppError');
 
@@ -51,6 +53,7 @@ app.use('/vendors', vendorRoutes);
 app.use('/products', productRoutes);
 app.use('/orders', orderRoutes);
 app.use('/reviews', reviewRoutes);
+app.use('/conversations', messageRoutes);
 
 app.use((req, res, next) => {
     next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
