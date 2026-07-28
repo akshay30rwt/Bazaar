@@ -1,3 +1,8 @@
+const Conversation = require('../models/Conversation');
+const Message = require('../models/Message');
+const Vendor = require('../models/Vendor');
+const AppError = require('../utils/AppError');
+
 const startConversation = async (req, res, next) => {
     try {
         const { vendorId, productId, initialMessage } = req.body;
