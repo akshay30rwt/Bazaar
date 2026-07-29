@@ -228,4 +228,42 @@ const getVendorRevenue = async (req, res, next) => {
     }
 };
 
-module.exports = { createVendor, uploadBanner, getVendorProfile, updateVendor };
+const getVendorOrderStats = async (req, res, next) => {
+    try {
+        const vendor = await Vendor.findOne({ user: req.userId });
+
+        if(!vendor) {
+            throw new AppError('Vendor profile not found', 404);
+        }
+
+        const statusBreakdown = await Order.aggregate([
+            { $unwind: '$items' },
+            { $match: { 'items.vendor': vendor._id } },
+            {
+                $group: {
+                    _id: { orderId: '$_id', status: '$status' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$_id.status',
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    status: '$_id',
+                    count: 1
+                }
+            }
+        ]);
+
+        res.status(200).json({ statusBreakdown });
+    } 
+    catch(error) {
+        next(error);
+    }
+};
+
+module.exports = { createVendor, uploadBanner, getVendorProfile, updateVendor, getVendorRevenue, getVendorOrderStats };
