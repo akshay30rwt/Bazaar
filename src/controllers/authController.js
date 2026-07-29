@@ -149,7 +149,7 @@ const forgotPassword = async (req, res, next) => {
         user.resetPasswordExpiry = Date.now() + 60 * 60 * 1000;
         await user.save();
 
-        const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/forgot-email/${plainResetToken}`;
+        const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/reset-password/${plainResetToken}`;
 
         try {
             await sendEmail({
