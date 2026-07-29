@@ -133,6 +133,9 @@ const initSocket = (io) => {
 
                 const vendorProfile = await Vendor.findOne({ user: socket.userId });
                 const isBuyer = conversation.buyer.toString() === socket.userId;
+                const isVendor = vendorProfile && conversation.vendor.toString() === vendorProfile._id.toString();
+
+                if(!isBuyer && !isVendor) return;
 
                 const recipientUserId = isBuyer
                     ? (await Vendor.findById(conversation.vendor)).user.toString()
@@ -153,7 +156,11 @@ const initSocket = (io) => {
                 const conversation = await Conversation.findById(conversationId);
                 if(!conversation) return;
 
+                const vendorProfile = await Vendor.findOne({ user: socket.userId });
                 const isBuyer = conversation.buyer.toString() === socket.userId;
+                const isVendor = vendorProfile && conversation.vendor.toString() === vendorProfile._id.toString();
+
+                if(!isBuyer && !isVendor) return;
 
                 const recipientUserId = isBuyer
                     ? (await Vendor.findById(conversation.vendor)).user.toString()
