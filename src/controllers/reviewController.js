@@ -74,6 +74,9 @@ const createReview = async (req, res, next) => {
         });
     }
     catch(error) {
+        if(error.name === 'CastError') {
+            return next(new AppError('Invalid product ID format', 400));
+        }
         next(error);
     }
 };
