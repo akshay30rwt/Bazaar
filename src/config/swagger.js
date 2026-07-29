@@ -9,6 +9,7 @@ const options = {
             description: 'A multi-vendor marketplace REST API with real-time messaging'
         },
         servers: [
+            { url: 'https://bazaar-4mbr.onrender.com', description: 'Production server' },
             { url: 'http://localhost:3000', description: 'Local server' }
         ],
         components: {
