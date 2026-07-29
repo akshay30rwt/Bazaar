@@ -88,7 +88,7 @@ const uploadBanner = async (req, res, next) => {
 
 const getVendorProfile = async (req, res, next) => {
     try {
-        const vendor = await Vendor.findById(req.params.id).populate('user', 'name, email, avatar');
+        const vendor = await Vendor.findById(req.params.id).populate('user', 'name email avatar');
 
         if(!vendor) {
             throw new AppError('Vendor not found', 404);
@@ -101,6 +101,9 @@ const getVendorProfile = async (req, res, next) => {
         res.status(200).json(vendor);
     }
     catch(error) {
+        if(error.name === 'CastError') {
+            return next(new AppError('Invalid vendor ID format', 400));
+        }
         next(error);
     }
 };
