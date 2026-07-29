@@ -3,6 +3,7 @@ const Vendor = require('../models/Vendor');
 const AppError = require('../utils/AppError');
 const cloudinary = require('../config/cloudinary');
 const logger = require('../utils/logger');
+const { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } = require('../config/constants');
 
 const createProduct = async (req, res, next) => {
     let uploadedImages = [];
@@ -87,7 +88,7 @@ const createProduct = async (req, res, next) => {
 const getAllProducts = async (req, res, next) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit) || DEFAULT_PAGE_SIZE));
         const skip = (page - 1) * limit;
 
         const filter = { isActive: true };
@@ -132,7 +133,7 @@ const searchProducts = async (req, res, next) => {
         }
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit) || DEFAULT_PAGE_SIZE));
         const skip = (page - 1) * limit;
 
         const filter = {
@@ -290,7 +291,7 @@ const addProductImages = async (req, res, next) => {
             throw new AppError('At least one image is required', 400);
         }
 
-        const MAX_IMAGES_PER_PRODUCT = 5;
+        const { MAX_IMAGES_PER_PRODUCT } = require('../config/constants');
         if(product.images.length + req.files.length > MAX_IMAGES_PER_PRODUCT) {
             throw new AppError(`A product cannot have more than ${MAX_IMAGES_PER_PRODUCT} images. Currently has ${product.images.length}`, 400);
         }

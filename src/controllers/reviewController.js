@@ -3,6 +3,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Vendor = require('../models/Vendor');
 const AppError = require('../utils/AppError');
+const { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } = require('../config/constants');
 
 const createReview = async (req, res, next) => {
     try {
@@ -87,7 +88,7 @@ const getProductReviews = async (req, res, next) => {
         }
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit) || DEFAULT_PAGE_SIZE));
         const skip = (page - 1) * limit;
 
         const filter = { product: productId };

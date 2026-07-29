@@ -1,5 +1,6 @@
 const multer = require('multer');
 const AppError = require('../utils/AppError');
+const { MAX_FILE_SIZE_MB, MAX_FILES_PER_UPLOAD } = require('../config/constants');
 
 const storage = multer.memoryStorage();
 
@@ -17,8 +18,8 @@ const upload = multer({
     storage,
     fileFilter,
     limits: {
-        fileSize: 5 * 1024 * 1024,
-        files: 5
+        fileSize: MAX_FILE_SIZE_MB * 1024 * 1024,
+        files: MAX_FILES_PER_UPLOAD
     }
 });
 

@@ -1,3 +1,4 @@
+const { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } = require('../config/constants');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Vendor = require('../models/Vendor');
@@ -77,7 +78,7 @@ const getInbox = async (req, res, next) => {
         const vendorProfile = await Vendor.findOne({ user: req.userId });
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit) || DEFAULT_PAGE_SIZE));
         const skip = (page - 1) * limit;
 
         const filter = vendorProfile
@@ -127,7 +128,7 @@ const getConversationMessages = async (req, res, next) => {
         }
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30));
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit) || DEFAULT_PAGE_SIZE));
         const skip = (page - 1) * limit;
 
         const [messages, total] = await Promise.all([

@@ -5,6 +5,7 @@ const Vendor = require('../models/Vendor');
 const AppError = require('../utils/AppError');
 const sendEmail = require('../utils/sendEmail');
 const logger = require('../utils/logger');
+const { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } = require('../config/constants');
 
 const createOrder = async (req, res, next) => {
     const session = await mongoose.startSession();
@@ -99,7 +100,7 @@ const createOrder = async (req, res, next) => {
 const getCustomerOrders = async (req, res, next) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit) || DEFAULT_PAGE_SIZE));
         const skip = (page - 1) * limit;
 
         const filter = { customer: req.userId };
@@ -133,7 +134,7 @@ const getVendorOrders = async (req, res, next) => {
         }
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit) || DEFAULT_PAGE_SIZE));
         const skip = (page - 1) * limit;
 
         const filter = { 'items.vendor': vendor._id };
