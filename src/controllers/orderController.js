@@ -6,6 +6,7 @@ const AppError = require('../utils/AppError');
 const sendEmail = require('../utils/sendEmail');
 const logger = require('../utils/logger');
 const { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } = require('../config/constants');
+const { isVendorOnOrder, filterOrderItemsForVendor } = require('../utils/orderHelpers');
 
 const createOrder = async (req, res, next) => {
     const session = await mongoose.startSession();
@@ -148,13 +149,7 @@ const getVendorOrders = async (req, res, next) => {
             Order.countDocuments(filter)
         ]);
 
-        const scopedOrders = orders.map(order => {
-            const orderObj = order.toObject();
-            orderObj.items = orderObj.items.filter(
-                item => item.vendor.toString() === vendor._id.toString()
-            );
-            return orderObj;
-        });
+        const scopedOrders = orders.map(order => filterOrderItemsForVendor(order, vendor._id));
 
         res.status(200).json({
             total,
@@ -179,23 +174,22 @@ const getOrderById = async (req, res, next) => {
         const isOwner = order.customer._id.toString() === req.userId.toString();
 
         const vendor = await Vendor.findOne({ user: req.userId });
-        const isVendorOnOrder = vendor && order.items.some(
-            item => item.vendor.toString() === vendor._id.toString()
-        );
+        const isVendorOnThisOrder = vendor ? isVendorOnOrder(order, vendor._id) : false;
 
-        if(!isOwner && !isVendorOnOrder && req.userRole !== 'admin') {
+        if(!isOwner && !isVendorOnThisOrder && req.userRole !== 'admin') {
             throw new AppError('You do not have permission to view this order', 403);
         }
 
         const orderObj = order.toObject();
 
-        if(isVendorOnOrder && !isOwner && req.userRole !== 'admin') {
-            orderObj.items = orderObj.items.filter(
-                item => item.vendor.toString() === vendor._id.toString()
-            );
+        if(isVendorOnThisOrder && !isOwner && req.userRole !== 'admin') {
+            orderObj.items = filterOrderItemsForVendor(order, vendor._id)
         }
 
-        res.status(200).json(orderObj);
+        res.status(200).json(orderObj);const isVendorViewer = isVendorOnThisOrder && !isOwner && req.userRole !== 'admin';
+        const responseOrder = isVendorViewer ? filterOrderItemsForVendor(order, vendor._id) : order.toObject();
+
+res.status(200).json(responseOrder);
     } 
     catch(error) {
         if (error.name === 'CastError') {
@@ -229,11 +223,9 @@ const updateOrderStatus = async (req, res, next) => {
             throw new AppError('Order not found', 404);
         }
 
-        const isVendorOnOrder = order.items.some(
-            item => item.vendor.toString() === vendor._id.toString()
-        );
+        const isVendorOnThisOrder = isVendorOnOrder(order, vendor._id);
 
-        if(!isVendorOnOrder) {
+        if(!isVendorOnThisOrder) {
             throw new AppError('You do not have permission to update this order', 403);
         }
 
