@@ -140,4 +140,92 @@ const updateVendor = async (req, res, next) => {
     }
 };
 
+const getVendorRevenue = async (req, res, next) => {
+    try {
+        const vendor = await Vendor.findOne({ user: req.userId });
+
+        if(!vendor) {
+            throw new AppError('Vendor profile not found', 404);
+        }
+
+        const revenueByMonth = await Order.aggregate([
+            { $match: { status: { $ne: 'cancelled' } } },
+            { $unwind: '$items' },
+            { $match: { 'items.vendor': vendor._id } },
+            {
+                $group: {
+                    _id: { $month: '$createdAt' },
+                    revenue: { $sum: { $multiply: ['$items.priceAtOrder', '$items.quantity'] } },
+                    orderCount: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } },
+            {
+                $project: {
+                    _id: 0,
+                    month: '$_id',
+                    revenue: 1,
+                    orderCount: 1
+                }
+            }
+        ]);
+
+        const overview = await Order.aggregate([
+            { $match: { status: { $ne: 'cancelled' } } },
+            { $unwind: '$items' },
+            { $match: { 'items.vendor': vendor._id } },
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: { $multiply: ['$items.priceAtOrder', '$items.quantity'] } },
+                    totalItemsSold: { $sum: '$items.quantity' },
+                    totalOrders: { $addToSet: '$_id' }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    totalRevenue: 1,
+                    totalItemsSold: 1,
+                    totalOrders: { $size: '$totalOrders' }
+                }
+            }
+        ]);
+
+        const topProducts = await Order.aggregate([
+            { $match: { status: { $ne: 'cancelled' } } },
+            { $unwind: '$items' },
+            { $match: { 'items.vendor': vendor._id } },
+            {
+                $group: {
+                    _id: '$items.product',
+                    name: { $first: '$items.name' },
+                    totalQuantitySold: { $sum: '$items.quantity' },
+                    totalRevenue: { $sum: { $multiply: ['$items.priceAtOrder', '$items.quantity'] } }
+                }
+            },
+            { $sort: { totalQuantitySold: -1 } },
+            { $limit: 5 },
+            {
+                $project: {
+                    _id: 0,
+                    productId: '$_id',
+                    name: 1,
+                    totalQuantitySold: 1,
+                    totalRevenue: 1
+                }
+            }
+        ]);
+
+        res.status(200).json({
+            overview: overview[0] || { totalRevenue: 0, totalItemsSold: 0, totalOrders: 0 },
+            revenueByMonth,
+            topProducts
+        });
+    } 
+    catch(error) {
+        next(error);
+    }
+};
+
 module.exports = { createVendor, uploadBanner, getVendorProfile, updateVendor };
