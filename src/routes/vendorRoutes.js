@@ -8,7 +8,9 @@ const {
     createVendor,
     uploadBanner,
     getVendorProfile,
-    updateVendor
+    updateVendor,
+    getVendorRevenue,
+    getVendorOrderStats
 } = require('../controllers/vendorController');
 
 /**
@@ -88,6 +90,34 @@ router.post('/banner', protect, upload.single('banner'), uploadBanner);
  *         description: Vendor profile updated
  */
 router.put('/me', protect, validate(updateVendorSchema), updateVendor);
+
+/**
+ * @swagger
+ * /vendors/me/analytics/revenue:
+ *   get:
+ *     summary: Get own storefront's revenue analytics
+ *     tags: [Vendors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Revenue overview, monthly breakdown, top products
+ */
+router.get('/me/analytics/revenue', protect, restrictTo('vendor'), getVendorRevenue);
+
+/**
+ * @swagger
+ * /vendors/me/analytics/orders:
+ *   get:
+ *     summary: Get own storefront's order status breakdown
+ *     tags: [Vendors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Order counts grouped by status
+ */
+router.get('/me/analytics/orders', protect, restrictTo('vendor'), getVendorOrderStats);
 
 /**
  * @swagger
