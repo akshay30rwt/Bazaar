@@ -1,5 +1,6 @@
 const Vendor = require('../models/Vendor');
 const User = require('../models/User');
+const Order = require('../models/Order');
 const AppError = require('../utils/AppError');
 const cloudinary = require('../config/cloudinary');
 const logger = require('../utils/logger');
