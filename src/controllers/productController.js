@@ -3,7 +3,7 @@ const Vendor = require('../models/Vendor');
 const AppError = require('../utils/AppError');
 const cloudinary = require('../config/cloudinary');
 const logger = require('../utils/logger');
-const { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } = require('../config/constants');
+const { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_IMAGES_PER_PRODUCT } = require('../config/constants');
 
 const createProduct = async (req, res, next) => {
     let uploadedImages = [];
@@ -192,6 +192,10 @@ const updateProduct = async (req, res, next) => {
             throw new AppError('Vendor profile not found', 404);
         }
 
+        if(!vendor.isActive) {
+            throw new AppError('Your storefront is currently suspended', 403);
+        }
+
         const product = await Product.findById(req.params.id);
 
         if(!product) {
@@ -232,6 +236,10 @@ const deleteProduct = async (req, res, next) => {
 
         if(!vendor) {
             throw new AppError('Vendor profile not found', 404);
+        }
+
+        if(!vendor.isActive) {
+            throw new AppError('Your storefront is currently suspended', 403);
         }
 
         const product = await Product.findById(req.params.id);
@@ -277,6 +285,10 @@ const addProductImages = async (req, res, next) => {
             throw new AppError('Vendor profile not found', 404);
         }
 
+        if(!vendor.isActive) {
+            throw new AppError('Your storefront is currently suspended', 403);
+        }
+
         const product = await Product.findById(req.params.id);
 
         if(!product) {
@@ -291,7 +303,6 @@ const addProductImages = async (req, res, next) => {
             throw new AppError('At least one image is required', 400);
         }
 
-        const { MAX_IMAGES_PER_PRODUCT } = require('../config/constants');
         if(product.images.length + req.files.length > MAX_IMAGES_PER_PRODUCT) {
             throw new AppError(`A product cannot have more than ${MAX_IMAGES_PER_PRODUCT} images. Currently has ${product.images.length}`, 400);
         }
@@ -355,6 +366,10 @@ const removeProductImage = async (req, res, next) => {
 
         if(!vendor) {
             throw new AppError('Vendor profile not found', 404);
+        }
+
+        if(!vendor.isActive) {
+            throw new AppError('Your storefront is currently suspended', 403);
         }
 
         const product = await Product.findById(req.params.id);
