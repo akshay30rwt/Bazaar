@@ -3,6 +3,7 @@ const router = express.Router();
 const protect = require('../middleware/authMiddleware');
 const validate = require('../middleware/validate');
 const upload = require('../middleware/upload');
+const restrictTo = require('../middleware/roleMiddleware');
 const { createVendorSchema, updateVendorSchema } = require('../validators/vendorValidator');
 const {
     createVendor,
