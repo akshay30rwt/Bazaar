@@ -9,7 +9,14 @@
   },
   "jest": {
     "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "collectCoverage": true,
+    "collectCoverageFrom": [
+        "src/**/*.js",
+        "!src/scripts/**",
+        "!src/config/**"
+    ],
+    "coverageDirectory": "coverage"
   },
   "keywords": [],
   "author": "Akshay Rawat",
