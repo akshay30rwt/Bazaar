@@ -40,7 +40,7 @@ const createOrder = async (req, res, next) => {
             const updatedProduct = await Product.findOneAndUpdate(
                 { _id: item.product, stock: { $gte: item.quantity } },
                 { $inc: { stock: -item.quantity } },
-                { new: true, session }
+                { returnDocument: 'after', session }
             );
 
             if(!updatedProduct) {

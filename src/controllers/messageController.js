@@ -56,7 +56,7 @@ const startConversation = async (req, res, next) => {
                 lastMessageAt: new Date(),
                 $inc: { unreadCountVendor: 1 }
             },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         res.status(201).json({

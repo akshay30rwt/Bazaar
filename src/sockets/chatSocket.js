@@ -98,7 +98,7 @@ const initSocket = (io) => {
                         lastMessageAt: new Date(),
                         $inc: { [unreadFieldToIncrement]: 1 }
                     },
-                    { new: true }
+                    { returnDocument: 'after' }
                 );
 
                 const recipientUserId = isBuyer
