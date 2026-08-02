@@ -139,4 +139,52 @@ describe('Product Integration Tests', () => {
             expect(response.status).toBe(403);
         });
     });
+
+    describe('PUT /products/:id', () => {
+        it('should allow a vendor to update their own product', async () => {
+            const response = await request(app)
+                .put(`/products/${productId}`)
+                .set('Authorization', `Bearer ${vendorToken}`)
+                .send({ price: 1200 });
+
+            expect(response.status).toBe(200);
+            expect(response.body.product.price).toBe(1200);
+        });
+
+        it('should reject a different vendor trying to update this product', async () => {
+            const response = await request(app)
+                .put(`/products/${productId}`)
+                .set('Authorization', `Bearer ${otherVendorToken}`)
+                .send({ price: 9999 });
+
+            expect(response.status).toBe(403);
+
+            const unchangedProduct = await Product.findById(productId);
+            expect(unchangedProduct.price).toBe(1000);
+        });
+    });
+
+    describe('DELETE /products/:id', () => {
+        it('should reject a different vendor trying to delete this product', async () => {
+            const response = await request(app)
+                .delete(`/products/${productId}`)
+                .set('Authorization', `Bearer ${otherVendorToken}`);
+
+            expect(response.status).toBe(403);
+
+            const stillExists = await Product.findById(productId);
+            expect(stillExists).not.toBeNull();
+        });
+
+        it('should allow the owning vendor to delete their own product', async () => {
+            const response = await request(app)
+                .delete(`/products/${productId}`)
+                .set('Authorization', `Bearer ${vendorToken}`);
+
+            expect(response.status).toBe(200);
+
+            const deletedProduct = await Product.findById(productId);
+            expect(deletedProduct).toBeNull();
+        });
+    });
 });
