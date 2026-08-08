@@ -37,11 +37,25 @@ const findOrdersByCustomer = (customerId, skip, limit) => {
     ]);
 };
 
+const findOrdersByVendorItems = (vendorId, skip, limit) => {
+    const filter = { 'items.vendor': vendorId };
+    return Promise.all([
+        Order.find(filter).populate('customer', 'name email').sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Order.countDocuments(filter)
+    ]);
+};
+
+const saveOrder = (order, session) => {
+    return order.save(session ? { session } : undefined);
+};
+
 module.exports = {
     findProductById,
     decrementStockAtomically,
     incrementStockAtomically,
     createOrderDocument,
     findOrderById,
-    findOrdersByCustomer
+    findOrdersByCustomer,
+    findOrdersByVendorItems,
+    saveOrder
 };
